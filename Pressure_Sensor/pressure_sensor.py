@@ -31,8 +31,8 @@ class PressureSensor:
     NPN_STATUS_REG = 0x0003 
 
     def __init__(self, port, highLimit, lowLimit = None, targetValue = None, mode = pse.WorkingMode.WINDOW_COMPARATOR, unit = pse.Units.BAR, measureLogic = pse.MeasureLogic.POSITIVE):
-        self.port = port # PORT
 
+        self.port = port
         self.instance = ModbusSerialClient(
             port = port,
             baudrate = 19200,
@@ -43,9 +43,11 @@ class PressureSensor:
         ) 
         self.setUnit(unit)
         self.setMeasureLogic(measureLogic)
-        self.setMode(highLimit,lowLimit,targetValue, mode)
+        self.setMode(highLimit,lowLimit,targetValue,mode)
+
+    def __str__(self):
+        return f"Current pressure: {self.getCurrentValue()}\nLow limit is {self.getLowLimit()}\nHigh limit is: {self.getHighLimit()}\nTarget value is: {self.getTargetValue()}\nNPN OUT value: {self.getNPNStatus()}\nWork mode: {self.getWorkMode()}"
     
-        
 
     def connect(self):
         if self.instance.connect() == False:
@@ -57,34 +59,34 @@ class PressureSensor:
         try:
             value = self.instance.read_input_registers(address = self.PRESSURE_VALUE_REG)
             ret = value.registers[0]/100
-            print(f"Current pressure is: {ret}")
+            #print(f"Current pressure is: {ret}")
             return ret
         except:
             raise ValueError("An error occurred. It is not possible to read the current value from the register")
 
     def getLowLimit(self):
         value = self.instance.read_holding_registers(address = self.LOWER_LIMIT_REG)
-        print(f"Low limit is: {value.registers[0]}")
-        return self.lowLimit
+        #print(f"Low limit is: {value.registers[0]}")
+        return value.registers[0]
 
     def getHighLimit(self):
         value = self.instance.read_holding_registers(address = self.HIGHER_LIMIT_REG)
-        print(f"High limit is: {value.registers[0]}")
+        #print(f"High limit is: {value.registers[0]}")
+        return value.registers[0]
 
     def getTargetValue(self):
         value = self.instance.read_holding_registers(address = self.PRESSURE_TARGET_VALUE_REG)
         print(f"Target value is: {value.registers[0]}")
-        return self.targetValue
+        return value.registers[0]
 
     def getNPNStatus(self):
         value = self.instance.read_holding_registers(address = self.NPN_STATUS_REG)
-        print(f"Vrednost na izlazu NPN je: {value.registers[0]}")
-
-
+        #print(f"Vrednost na izlazu NPN je: {value.registers[0]}")
+        return value.registers[0]
 
     def isGoodValue(self, value, name = "Value"):
         try:
-            if value > 10.0 or value <1.01:
+            if value > 10.0 or value < 1.01:
                 raise ValueError(f"{name} is out of range (1.01 - 10.0 BAR)")
         except:
             raise ValueError("Value is not a number")
@@ -132,18 +134,18 @@ class PressureSensor:
             except:
                 raise ValueError("An error occurred when entering the operating mode in the register.")
         
-        self.setHighLimit(highLimit)
-        self.targetValue = None
+        #self.setHighLimit(highLimit)
+        #self.targetValue = None
 
         if mode == pse.WorkingMode.EASY:
-            self.lowLimit = lowLimit
+            #self.lowLimit = lowLimit
             self.setTargetValue(targetValue)
 
         else:
             self.setLowLimit(lowLimit)
-            if targetValue!= None:
-                self.setTargetValue(targetValue)
-            
+            self.setHighLimit(highLimit)
+            if targetValue != None:
+                self.setTargetValue(targetValue)  # ovo je upitno??
             
     def setPullUpResistor(self, obj = pse.NPNstatus.NO):
         if obj not in pse.NPNstatus:
@@ -167,7 +169,7 @@ class PressureSensor:
         if colorMode not in pse.ColorMode:
              raise ValueError("The color mode entered is not allowed. Possible values ​​for the color mode are: RED_ON, GREEN_ON, RED_ALWAYS, GREEN_ALWAYS")
         try:
-            self.instance.write_register(address= self.PRESSURE_COLOR_REG, value = colorMode.value)
+            self.color = self.instance.write_register(address= self.PRESSURE_COLOR_REG, value = colorMode.value)
         except:
             raise ValueError("An error occurred when entering the color in the register.")
         
@@ -182,3 +184,6 @@ class PressureSensor:
 
             self.setColorMode(pse.ColorMode.RED_ON)
 
+    def getWorkMode(self):
+        return self.mode
+    
